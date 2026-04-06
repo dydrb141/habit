@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>습관퀘스트 — System Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface2: #1a1a26;
+  --border: rgba(255,255,255,0.06);
+  --text: #e8e6e1;
+  --text2: #8a8880;
+  --accent: #6c5ce7;
+  --accent2: #a29bfe;
+  --teal: #00cec9;
+  --teal-bg: rgba(0,206,201,0.08);
+  --coral: #ff7675;
+  --coral-bg: rgba(255,118,117,0.08);
+  --amber: #fdcb6e;
+  --amber-bg: rgba(253,203,110,0.08);
+  --green: #00b894;
+  --green-bg: rgba(0,184,148,0.08);
+  --blue: #74b9ff;
+  --blue-bg: rgba(116,185,255,0.08);
+  --font: 'IBM Plex Sans KR', sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:var(--bg); color:var(--text); font-family:var(--font); padding:2rem; min-height:100vh; }
+h1 { font-size:1.6rem; font-weight:600; margin-bottom:0.3rem; }
+.subtitle { color:var(--text2); font-size:0.85rem; margin-bottom:2rem; }
+.layer { margin-bottom:1.5rem; }
+.layer-label { font-size:0.7rem; font-weight:500; text-transform:uppercase; letter-spacing:0.12em; color:var(--text2); margin-bottom:0.6rem; padding-left:0.25rem; }
+.layer-box { border:1px solid var(--border); border-radius:12px; padding:1rem; background:var(--surface); }
+.nodes { display:grid; gap:0.6rem; }
+.nodes-2 { grid-template-columns:repeat(2, 1fr); }
+.nodes-3 { grid-template-columns:repeat(3, 1fr); }
+.nodes-4 { grid-template-columns:repeat(4, 1fr); }
+.node { border-radius:8px; padding:0.75rem 0.85rem; border:1px solid var(--border); transition:all 0.2s; cursor:default; }
+.node:hover { transform:translateY(-1px); border-color:rgba(255,255,255,0.12); }
+.node-title { font-size:0.8rem; font-weight:600; margin-bottom:0.2rem; display:flex; align-items:center; gap:0.4rem; }
+.node-desc { font-size:0.7rem; color:var(--text2); line-height:1.5; }
+.node-tags { display:flex; flex-wrap:wrap; gap:0.3rem; margin-top:0.4rem; }
+.tag { font-size:0.6rem; padding:0.15rem 0.45rem; border-radius:4px; font-family:var(--mono); font-weight:500; }
+.dot { width:6px; height:6px; border-radius:50%; display:inline-block; flex-shrink:0; }
+
+.n-teal { background:var(--teal-bg); }
+.n-teal .dot { background:var(--teal); }
+.n-teal .node-title { color:var(--teal); }
+.n-teal .tag { background:rgba(0,206,201,0.15); color:var(--teal); }
+
+.n-coral { background:var(--coral-bg); }
+.n-coral .dot { background:var(--coral); }
+.n-coral .node-title { color:var(--coral); }
+.n-coral .tag { background:rgba(255,118,117,0.15); color:var(--coral); }
+
+.n-amber { background:var(--amber-bg); }
+.n-amber .dot { background:var(--amber); }
+.n-amber .node-title { color:var(--amber); }
+.n-amber .tag { background:rgba(253,203,110,0.15); color:var(--amber); }
+
+.n-green { background:var(--green-bg); }
+.n-green .dot { background:var(--green); }
+.n-green .node-title { color:var(--green); }
+.n-green .tag { background:rgba(0,184,148,0.15); color:var(--green); }
+
+.n-blue { background:var(--blue-bg); }
+.n-blue .dot { background:var(--blue); }
+.n-blue .node-title { color:var(--blue); }
+.n-blue .tag { background:rgba(116,185,255,0.15); color:var(--blue); }
+
+.n-purple { background:rgba(108,92,231,0.08); }
+.n-purple .dot { background:var(--accent); }
+.n-purple .node-title { color:var(--accent2); }
+.n-purple .tag { background:rgba(108,92,231,0.15); color:var(--accent2); }
+
+.arrow-row { display:flex; justify-content:center; padding:0.4rem 0; }
+.arrow { color:var(--text2); font-size:0.75rem; display:flex; align-items:center; gap:0.3rem; }
+.arrow svg { width:14px; height:14px; opacity:0.5; }
+
+.section-title { font-size:1.1rem; font-weight:600; margin:2.5rem 0 0.5rem; padding-top:1.5rem; border-top:1px solid var(--border); }
+.section-desc { color:var(--text2); font-size:0.8rem; margin-bottom:1rem; line-height:1.6; }
+
+table { width:100%; border-collapse:collapse; font-size:0.75rem; margin-top:0.5rem; }
+th { text-align:left; color:var(--text2); font-weight:500; padding:0.5rem 0.6rem; border-bottom:1px solid var(--border); }
+td { padding:0.5rem 0.6rem; border-bottom:1px solid var(--border); }
+td:first-child { font-family:var(--mono); font-size:0.7rem; color:var(--teal); }
+.method { font-family:var(--mono); font-size:0.65rem; padding:0.1rem 0.4rem; border-radius:3px; font-weight:500; }
+.m-get { background:rgba(0,184,148,0.15); color:var(--green); }
+.m-post { background:rgba(116,185,255,0.15); color:var(--blue); }
+.m-put { background:rgba(253,203,110,0.15); color:var(--amber); }
+.m-del { background:rgba(255,118,117,0.15); color:var(--coral); }
+.m-ws { background:rgba(108,92,231,0.15); color:var(--accent2); }
+
+.db-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.6rem; }
+.db-table { background:var(--surface2); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.db-header { padding:0.5rem 0.7rem; font-size:0.75rem; font-weight:600; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:0.4rem; }
+.db-fields { padding:0.4rem 0; }
+.db-field { padding:0.2rem 0.7rem; font-size:0.68rem; font-family:var(--mono); color:var(--text2); display:flex; justify-content:space-between; }
+.db-field .type { color:var(--accent2); font-size:0.62rem; }
+.pk { color:var(--amber); }
+.fk { color:var(--teal); }
+
+.tree { font-family:var(--mono); font-size:0.72rem; line-height:1.8; color:var(--text2); background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:1rem 1.2rem; overflow-x:auto; }
+.tree .dir { color:var(--amber); font-weight:500; }
+.tree .file { color:var(--text); }
+.tree .comment { color:var(--text2); font-style:italic; }
+
+.cost-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:0.5rem; }
+.cost-card { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.7rem; text-align:center; }
+.cost-label { font-size:0.65rem; color:var(--text2); }
+.cost-val { font-size:1rem; font-weight:600; margin-top:0.2rem; }
+.cost-note { font-size:0.6rem; color:var(--text2); margin-top:0.15rem; }
+.cost-total { background:rgba(0,184,148,0.08); border-color:rgba(0,184,148,0.2); }
+.cost-total .cost-val { color:var(--green); }
+
+@media(max-width:600px) {
+  body { padding:1rem; }
+  .nodes-3, .nodes-4 { grid-template-columns:repeat(2,1fr); }
+  .db-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<h1>습관퀘스트 System Architecture</h1>
+<p class="subtitle">RPG 기반 초중학생 습관관리 앱 — 기술 아키텍처 v1.0</p>
+
+<!-- ===== SYSTEM ARCHITECTURE ===== -->
+
+<!-- Client Layer -->
+<div class="layer">
+  <div class="layer-label">Client layer</div>
+  <div class="layer-box">
+    <div class="nodes nodes-3">
+      <div class="node n-teal">
+        <div class="node-title"><span class="dot"></span>자녀용 PWA</div>
+        <div class="node-desc">퀘스트 체크, 캐릭터 뷰, 보스전, 상점. Pixi.js로 캐릭터 렌더링. 홈화면 추가로 앱처럼 사용</div>
+        <div class="node-tags"><span class="tag">Next.js 14</span><span class="tag">Pixi.js</span><span class="tag">PWA</span></div>
+      </div>
+      <div class="node n-teal">
+        <div class="node-title"><span class="dot"></span>부모 대시보드</div>
+        <div class="node-desc">습관 설정/승인, 주간 리포트 조회, 보상 관리, 구독 결제</div>
+        <div class="node-tags"><span class="tag">Next.js 14</span><span class="tag">Recharts</span></div>
+      </div>
+      <div class="node n-blue">
+        <div class="node-title"><span class="dot"></span>공유 UI 라이브러리</div>
+        <div class="node-desc">디자인 시스템, 공통 컴포넌트, API 클라이언트. 자녀/부모 앱에서 공유</div>
+        <div class="node-tags"><span class="tag">Turborepo</span><span class="tag">Tailwind</span><span class="tag">shadcn/ui</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row"><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg> REST + WebSocket</span></div>
+
+<!-- API Gateway -->
+<div class="layer">
+  <div class="layer-label">Gateway</div>
+  <div class="layer-box" style="padding:0.6rem 1rem;">
+    <div class="node n-amber" style="border:none;padding:0.4rem 0;">
+      <div class="node-title"><span class="dot"></span>Caddy (리버스 프록시)</div>
+      <div class="node-desc">자동 HTTPS · Rate Limiting (IP당 60req/min) · WebSocket 프록시 · 정적 파일 캐시 · CORS</div>
+      <div class="node-tags"><span class="tag">Caddy v2</span><span class="tag">auto-TLS</span><span class="tag">HTTP/3</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row"><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg> /api/v1/* → FastAPI</span></div>
+
+<!-- Backend Layer -->
+<div class="layer">
+  <div class="layer-label">Backend — FastAPI Application</div>
+  <div class="layer-box">
+    <div class="nodes nodes-4" style="margin-bottom:0.6rem;">
+      <div class="node n-purple">
+        <div class="node-title"><span class="dot"></span>Auth</div>
+        <div class="node-desc">JWT 발급/검증, 부모-자녀 페어링 코드, OAuth (카카오)</div>
+        <div class="node-tags"><span class="tag">PyJWT</span><span class="tag">bcrypt</span></div>
+      </div>
+      <div class="node n-purple">
+        <div class="node-title"><span class="dot"></span>Habit</div>
+        <div class="node-desc">습관 CRUD, 체크/승인 플로우, 스트릭 계산, 카테고리→스탯 매핑</div>
+        <div class="node-tags"><span class="tag">Pydantic v2</span></div>
+      </div>
+      <div class="node n-purple">
+        <div class="node-title"><span class="dot"></span>Game Engine</div>
+        <div class="node-desc">EXP/HP/레벨 계산, 장비 효과 적용, 보스 데미지 공식, 드롭 테이블</div>
+        <div class="node-tags"><span class="tag">Pure Python</span></div>
+      </div>
+      <div class="node n-purple">
+        <div class="node-title"><span class="dot"></span>Party</div>
+        <div class="node-desc">파티 생성/초대, 보스전 상태머신, 연대 HP 감소 로직</div>
+        <div class="node-tags"><span class="tag">WebSocket</span></div>
+      </div>
+    </div>
+    <div class="nodes nodes-4">
+      <div class="node n-coral">
+        <div class="node-title"><span class="dot"></span>Scheduler</div>
+        <div class="node-desc">매일 자정: 미완료 Daily → HP 감소, 스트릭 리셋</div>
+        <div class="node-tags"><span class="tag">APScheduler</span></div>
+      </div>
+      <div class="node n-coral">
+        <div class="node-title"><span class="dot"></span>Notification</div>
+        <div class="node-desc">퀘스트 알림, 부모 승인 요청, 보스 출현 알림</div>
+        <div class="node-tags"><span class="tag">FCM</span><span class="tag">카카오</span></div>
+      </div>
+      <div class="node n-coral">
+        <div class="node-title"><span class="dot"></span>Report</div>
+        <div class="node-desc">주간 습관 이행률, 캐릭터 성장 그래프, 또래 비교</div>
+        <div class="node-tags"><span class="tag">Celery task</span></div>
+      </div>
+      <div class="node n-coral">
+        <div class="node-title"><span class="dot"></span>Payment</div>
+        <div class="node-desc">구독 관리, 웹훅 처리, 인앱구매 영수증 검증</div>
+        <div class="node-tags"><span class="tag">토스페이먼츠</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-row"><span class="arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg> SQLAlchemy ORM + Redis client</span></div>
+
+<!-- Data Layer -->
+<div class="layer">
+  <div class="layer-label">Data layer</div>
+  <div class="layer-box">
+    <div class="nodes nodes-4">
+      <div class="node n-green">
+        <div class="node-title"><span class="dot"></span>PostgreSQL 16</div>
+        <div class="node-desc">메인 DB. 유저, 캐릭터, 습관, 파티, 결제. JSONB로 게임 데이터 유연하게 저장</div>
+        <div class="node-tags"><span class="tag">Supabase</span><span class="tag">JSONB</span></div>
+      </div>
+      <div class="node n-coral">
+        <div class="node-title"><span class="dot"></span>Redis 7</div>
+        <div class="node-desc">세션 캐시, 리더보드 (Sorted Set), WebSocket Pub/Sub, Rate Limit 카운터</div>
+        <div class="node-tags"><span class="tag">Upstash</span></div>
+      </div>
+      <div class="node n-amber">
+        <div class="node-title"><span class="dot"></span>S3 / R2</div>
+        <div class="node-desc">캐릭터 스프라이트, 장비 아이콘, 보스 이미지. CDN으로 서빙</div>
+        <div class="node-tags"><span class="tag">Cloudflare R2</span></div>
+      </div>
+      <div class="node n-blue">
+        <div class="node-title"><span class="dot"></span>Celery + Redis</div>
+        <div class="node-desc">비동기 작업: 리포트 생성, 알림 발송, 일괄 스탯 계산</div>
+        <div class="node-tags"><span class="tag">Celery 5</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DATABASE SCHEMA ===== -->
+<div class="section-title">Database Schema (ERD)</div>
+<div class="section-desc">PostgreSQL 16 — 핵심 8개 테이블. JSONB 컬럼으로 게임 데이터를 유연하게 확장할 수 있는 구조.</div>
+
+<div class="db-grid">
+  <div class="db-table">
+    <div class="db-header" style="color:var(--teal);">users</div>
+    <div class="db-fields">
+      <div class="db-field"><span><span class="pk">PK</span> id</span><span class="type">UUID</span></div>
+      <div class="db-field"><span>email</span><span class="type">VARCHAR</span></div>
+      <div class="db-field"><span>password_hash</span><span class="type">VARCHAR</span></div>
+      <div class="db-field"><span>role</span><span class="type">ENUM(parent,child)</span></div>
+      <div class="db-field"><span>nickname</span><span class="type">VARCHAR(20)</span></div>
+      <div class="db-field"><span>subscription_tier</span><span class="type">ENUM</span></div>
+      <div class="db-field"><span>created_at</span><span class="type">TIMESTAMPTZ</span></div>
+    </div>
+  </div>
+
+  <div class="db-table">
+    <div class="db-header" style="color:var(--teal);">families</div>
+    <div class="db-fields">
+      <div class="db-field"><span><span class="pk">PK</span> id</span><span class="type">UUID</span></div>
+      <div class="db-field"><span><span class="fk">FK</span> parent_id</span><span class="type">→ users</span></div>
+      <div class="db-field"><span><span class="fk">FK</span> child_id</span><span class="type">→ users</span></div>
+      <div class="db-field"><span>pairing_code</span><span class="type">VARCHAR(6)</span></div>
+      <div class="db-field"><span>paired_at</span><span class="type">TIMESTAMPTZ</span></div>
+    </div>
+  </div>
+
+  <div class="db-table">
+    <div class="db-header" style="color:var(--accent2);">characters</div>
+    <div class="db-fields">
+      <div class="db-field"><span><span class="pk">PK</span> id</span><span class="type">UUID</span></div>
+      <div class="db-field"><span><span class="fk">FK</span> user_id</span><span class="type">→ users</span></div>
+      <div class="db-field"><span>class_type</span><span class="type">ENUM</span></div>
+      <div class="db-field"><span>level</span><span class="type">INT (def:1)</span></div>
+      <div class="db-field"><span>exp / max_exp</span><span class="type">INT</span></div>
+      <div class="db-field"><span>hp / max_hp</span><span class="type">INT</span></div>
+      <div class="db-field"><span>gold</span><span class="type">INT (def:0)</span></div>
+      <div class="db-field"><span>gems</span><span class="type">INT (def:0)</span></div>
+      <div class="db-field"><span>stats</span><span class="type">JSONB</span></div>
+      <div class="db-field"><span>equipment</span><span class="type">JSONB</span></div>
+      <div class="db-field"><span>appearance</span><span class="type">JSONB</span></div>
+    </div>
+  </div>
+
+  <div class="db-table">
+    <div class="db-header" style="color:var(--green);">habits</div>
+    <div class="db-fields">
+      <div class="db-field"><span><span class="pk">PK</span> id</span><span class="type">UUID</span></div>
+      <div class="db-field"><span><span class="fk">FK</span> user_id</span><span class="type">→ users</span></div>
+      <div class="db-field"><span>title</span><span class="type">VARCHAR(50)</span></div>
+      <div class="db-field"><span>category</span><span class="type">ENUM</span></div>
+      <div class="db-field"><span>difficulty</span><span class="type">ENUM(easy,mid,hard)</span></div>
+      <div class="db-field"><span>schedule</span><span class="type">JSONB</span></div>
+      <div class="db-field"><span>requires_approval</span><span class="type">BOOLEAN</span></div>
+      <div class="db-field"><span>streak_count</span><span class="type">INT</span></div>
+      <div class="db-field"><span>is_active</span><span class="type">BOOLEAN</span></div>
+    </div>
+  </div>
+
+  <div class="db-table">
+    <div class="db-header" style="color:var(--green);">habit_logs</div>
+    <div class="db-fields">
+      <div class="db-field"><span><span class="pk">PK</span> id</span><span class="type">UUID</span></div>
+      <div class="db-field"><span><span class="fk">FK</span> habit_id</span><span class="type">→ habits</span></div>
+      <div class="db-field"><span><span class="fk">FK</span> user_id</span><span class="type">→ users</span></div>
+      <div class="db-field"><span>status</span><span class="type">ENUM</span></div>
+      <div class="db-field"><span>approved_by</span><span class="type">UUID (nullable)</span></div>
+      <div class="db-field"><span>exp_earned</span><span class="type">INT</span></div>
+      <div class="db-field"><span>gold_earned</span><span class="type">INT</span></div>
+      <div class="db-field"><span>completed_at</span><span class="type">TIMESTAMPTZ</span></div>
+    </div>
+  </div>
+
+  <div class="db-table">
+    <div class="db-header" style="color:var(--coral);">parties</div>
+    <div class="db-fields">
+      <div class="db-field"><span><span class="pk">PK</span> id</span><span class="type">UUID</span></div>
+      <div class="db-field"><span>name</span><span class="type">VARCHAR(30)</span></div>
+      <div class="db-field"><span><span class="fk">FK</span> leader_id</span><span class="type">→ users</span></div>
+      <div class="db-field"><span>invite_code</span><span class="type">VARCHAR(8)</span></div>
+      <div class="db-field"><span>member_ids</span><span class="type">UUID[]</span></div>
+      <div class="db-field"><span>max_members</span><span class="type">INT (def:5)</span></div>
+    </div>
+  </div>
+
+  <div class="db-table">
+    <div class="db-header" style="color:var(--coral);">boss_battles</div>
+    <div class="db-fields">
+      <div class="db-field"><span><span class="pk">PK</span> id</span><span class="type">UUID</span></div>
+      <div class="db-field"><span><span class="fk">FK</span> party_id</span><span class="type">→ parties</span></div>
+      <div class="db-field"><span>boss_template_id</span><span class="type">VARCHAR</span></div>
+      <div class="db-field"><span>boss_hp / boss_max_hp</span><span class="type">INT</span></div>
+      <div class="db-field"><span>status</span><span class="type">ENUM</span></div>
+      <div class="db-field"><span>rewards</span><span class="type">JSONB</span></div>
+      <div class="db-field"><span>started_at</span><span class="type">TIMESTAMPTZ</span></div>
+    </div>
+  </div>
+
+  <div class="db-table">
+    <div class="db-header" style="color:var(--amber);">items</div>
+    <div class="db-fields">
+      <div class="db-field"><span><span class="pk">PK</span> id</span><span class="type">VARCHAR</span></div>
+      <div class="db-field"><span>name</span><span class="type">VARCHAR</span></div>
+      <div class="db-field"><span>type</span><span class="type">ENUM</span></div>
+      <div class="db-field"><span>rarity</span><span class="type">ENUM</span></div>
+      <div class="db-field"><span>stats_bonus</span><span class="type">JSONB</span></div>
+      <div class="db-field"><span>price_gold / price_gems</span><span class="type">INT</span></div>
+      <div class="db-field"><span>sprite_url</span><span class="type">VARCHAR</span></div>
+      <div class="db-field"><span>is_premium</span><span class="type">BOOLEAN</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== API ENDPOINTS ===== -->
+<div class="section-title">API Endpoints</div>
+<div class="section-desc">RESTful API + WebSocket. 모든 엔드포인트는 /api/v1 프리픽스. JWT Bearer 인증.</div>
+
+<div style="overflow-x:auto;">
+<table>
+  <tr><th>Method</th><th>Endpoint</th><th>설명</th><th>인증</th></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/auth/register</td><td>회원가입 (부모/자녀)</td><td>-</td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/auth/login</td><td>JWT 토큰 발급</td><td>-</td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/auth/pair</td><td>부모-자녀 페어링 (6자리 코드)</td><td>Parent</td></tr>
+  <tr><td colspan="4" style="border:none;padding:0.3rem;"></td></tr>
+  <tr><td><span class="method m-get">GET</span></td><td>/character</td><td>내 캐릭터 상태 (스탯, HP, 장비)</td><td>Child</td></tr>
+  <tr><td><span class="method m-put">PUT</span></td><td>/character/equipment</td><td>장비 장착/해제</td><td>Child</td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/character/shop/buy</td><td>골드/보석으로 아이템 구매</td><td>Child</td></tr>
+  <tr><td colspan="4" style="border:none;padding:0.3rem;"></td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/habits</td><td>습관 생성 (부모 or 자녀)</td><td>Both</td></tr>
+  <tr><td><span class="method m-get">GET</span></td><td>/habits/today</td><td>오늘의 퀘스트 목록</td><td>Child</td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/habits/:id/check</td><td>습관 완료 체크 → pending or completed</td><td>Child</td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/habits/:id/approve</td><td>부모 승인 → EXP/골드 지급</td><td>Parent</td></tr>
+  <tr><td><span class="method m-get">GET</span></td><td>/habits/:id/streak</td><td>스트릭 히스토리</td><td>Both</td></tr>
+  <tr><td colspan="4" style="border:none;padding:0.3rem;"></td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/party</td><td>파티 생성</td><td>Child</td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/party/join</td><td>초대 코드로 파티 참여</td><td>Child</td></tr>
+  <tr><td><span class="method m-post">POST</span></td><td>/party/boss/start</td><td>보스전 시작</td><td>Child</td></tr>
+  <tr><td><span class="method m-ws">WS</span></td><td>/ws/party/:id</td><td>보스전 실시간 동기화</td><td>Child</td></tr>
+  <tr><td colspan="4" style="border:none;padding:0.3rem;"></td></tr>
+  <tr><td><span class="method m-get">GET</span></td><td>/report/weekly</td><td>주간 습관 리포트</td><td>Parent</td></tr>
+  <tr><td><span class="method m-get">GET</span></td><td>/report/children</td><td>자녀 목록 + 요약 상태</td><td>Parent</td></tr>
+  <tr><td><span class="method m-get">GET</span></td><td>/leaderboard</td><td>레벨/스트릭 랭킹 (Redis)</td><td>Both</td></tr>
+</table>
+</div>
+
+<!-- ===== PROJECT STRUCTURE ===== -->
+<div class="section-title">Project Structure</div>
+<div class="section-desc">Monorepo 구조. apps/ 아래 백엔드와 프론트엔드 분리. packages/로 공유 로직.</div>
+
+<div class="tree"><pre>
+<span class="dir">habit-quest/</span>
+├── <span class="dir">apps/</span>
+│   ├── <span class="dir">api/</span>                       <span class="comment"># FastAPI 백엔드</span>
+│   │   ├── <span class="dir">app/</span>
+│   │   │   ├── <span class="file">main.py</span>            <span class="comment"># FastAPI app, 라우터 등록</span>
+│   │   │   ├── <span class="file">config.py</span>          <span class="comment"># 환경변수, 설정</span>
+│   │   │   ├── <span class="file">deps.py</span>            <span class="comment"># 의존성 주입 (DB, Redis, Auth)</span>
+│   │   │   ├── <span class="dir">models/</span>            <span class="comment"># SQLAlchemy ORM 모델</span>
+│   │   │   │   ├── <span class="file">user.py</span>
+│   │   │   │   ├── <span class="file">character.py</span>
+│   │   │   │   ├── <span class="file">habit.py</span>
+│   │   │   │   ├── <span class="file">party.py</span>
+│   │   │   │   └── <span class="file">item.py</span>
+│   │   │   ├── <span class="dir">schemas/</span>           <span class="comment"># Pydantic v2 요청/응답 스키마</span>
+│   │   │   │   ├── <span class="file">auth.py</span>
+│   │   │   │   ├── <span class="file">character.py</span>
+│   │   │   │   ├── <span class="file">habit.py</span>
+│   │   │   │   └── <span class="file">party.py</span>
+│   │   │   ├── <span class="dir">routers/</span>           <span class="comment"># API 라우터 (엔드포인트)</span>
+│   │   │   │   ├── <span class="file">auth.py</span>
+│   │   │   │   ├── <span class="file">character.py</span>
+│   │   │   │   ├── <span class="file">habit.py</span>
+│   │   │   │   ├── <span class="file">party.py</span>
+│   │   │   │   ├── <span class="file">report.py</span>
+│   │   │   │   └── <span class="file">ws.py</span>          <span class="comment"># WebSocket 보스전</span>
+│   │   │   ├── <span class="dir">engine/</span>            <span class="comment"># 🎮 게임 엔진 (핵심)</span>
+│   │   │   │   ├── <span class="file">calculator.py</span>  <span class="comment"># EXP, HP, 레벨업 공식</span>
+│   │   │   │   ├── <span class="file">combat.py</span>      <span class="comment"># 보스전 데미지 계산</span>
+│   │   │   │   ├── <span class="file">rewards.py</span>     <span class="comment"># 보상 드롭 테이블</span>
+│   │   │   │   ├── <span class="file">streak.py</span>      <span class="comment"># 스트릭 보너스 로직</span>
+│   │   │   │   └── <span class="file">constants.py</span>   <span class="comment"># 밸런스 상수</span>
+│   │   │   ├── <span class="dir">services/</span>          <span class="comment"># 비즈니스 로직 레이어</span>
+│   │   │   │   ├── <span class="file">habit_service.py</span>
+│   │   │   │   ├── <span class="file">character_service.py</span>
+│   │   │   │   ├── <span class="file">party_service.py</span>
+│   │   │   │   └── <span class="file">notification_service.py</span>
+│   │   │   ├── <span class="dir">tasks/</span>             <span class="comment"># Celery 비동기 작업</span>
+│   │   │   │   ├── <span class="file">daily_reset.py</span> <span class="comment"># 자정 HP 감소 배치</span>
+│   │   │   │   ├── <span class="file">weekly_report.py</span>
+│   │   │   │   └── <span class="file">notifications.py</span>
+│   │   │   └── <span class="dir">middleware/</span>        <span class="comment"># 커스텀 미들웨어</span>
+│   │   │       ├── <span class="file">auth.py</span>        <span class="comment"># JWT 검증</span>
+│   │   │       └── <span class="file">rate_limit.py</span>
+│   │   ├── <span class="dir">alembic/</span>               <span class="comment"># DB 마이그레이션</span>
+│   │   ├── <span class="dir">tests/</span>
+│   │   ├── <span class="file">Dockerfile</span>
+│   │   └── <span class="file">pyproject.toml</span>
+│   │
+│   ├── <span class="dir">web-child/</span>                 <span class="comment"># 자녀용 Next.js PWA</span>
+│   │   ├── <span class="dir">src/app/</span>
+│   │   │   ├── <span class="file">(quest)/page.tsx</span>   <span class="comment"># 오늘의 퀘스트</span>
+│   │   │   ├── <span class="file">(character)/</span>       <span class="comment"># 캐릭터 & 장비</span>
+│   │   │   ├── <span class="file">(party)/</span>           <span class="comment"># 파티 & 보스전</span>
+│   │   │   └── <span class="file">(shop)/</span>            <span class="comment"># 상점</span>
+│   │   ├── <span class="dir">src/components/game/</span>   <span class="comment"># Pixi.js 캐릭터 렌더러</span>
+│   │   ├── <span class="file">manifest.json</span>          <span class="comment"># PWA 매니페스트</span>
+│   │   └── <span class="file">sw.js</span>                  <span class="comment"># 서비스 워커</span>
+│   │
+│   └── <span class="dir">web-parent/</span>                <span class="comment"># 부모용 Next.js 대시보드</span>
+│       ├── <span class="dir">src/app/</span>
+│       │   ├── <span class="file">(dashboard)/</span>       <span class="comment"># 자녀 현황 한눈에</span>
+│       │   ├── <span class="file">(habits)/</span>          <span class="comment"># 습관 설정 & 승인</span>
+│       │   ├── <span class="file">(reports)/</span>         <span class="comment"># 주간/월간 리포트</span>
+│       │   └── <span class="file">(settings)/</span>        <span class="comment"># 구독, 보상 설정</span>
+│       └── <span class="file">next.config.js</span>
+│
+├── <span class="dir">packages/</span>
+│   ├── <span class="dir">ui/</span>                        <span class="comment"># 공유 UI 컴포넌트</span>
+│   ├── <span class="dir">api-client/</span>                <span class="comment"># 타입 안전한 API 클라이언트</span>
+│   └── <span class="dir">game-data/</span>                 <span class="comment"># 아이템/보스/밸런스 JSON</span>
+│
+├── <span class="file">docker-compose.yml</span>             <span class="comment"># 로컬 개발 (PG + Redis + API)</span>
+├── <span class="file">turbo.json</span>                     <span class="comment"># Turborepo 설정</span>
+└── <span class="file">.env.example</span>
+</pre></div>
+
+<!-- ===== MONTHLY COST ===== -->
+<div class="section-title">월간 인프라 비용 (초기)</div>
+<div class="section-desc">사용자 1,000명 이하 기준. 트래픽 증가 시 수평 확장.</div>
+
+<div class="cost-grid">
+  <div class="cost-card">
+    <div class="cost-label">Server (Railway)</div>
+    <div class="cost-val" style="color:var(--text);">$5~15</div>
+    <div class="cost-note">Hobby → Pro</div>
+  </div>
+  <div class="cost-card">
+    <div class="cost-label">PostgreSQL (Supabase)</div>
+    <div class="cost-val" style="color:var(--text);">$0~25</div>
+    <div class="cost-note">Free tier → Pro</div>
+  </div>
+  <div class="cost-card">
+    <div class="cost-label">Redis (Upstash)</div>
+    <div class="cost-val" style="color:var(--text);">$0~10</div>
+    <div class="cost-note">Free 10K/day</div>
+  </div>
+  <div class="cost-card">
+    <div class="cost-label">Storage (R2)</div>
+    <div class="cost-val" style="color:var(--text);">$0~3</div>
+    <div class="cost-note">10GB free</div>
+  </div>
+  <div class="cost-card">
+    <div class="cost-label">카카오 알림톡</div>
+    <div class="cost-val" style="color:var(--text);">~₩5K</div>
+    <div class="cost-note">건당 8.4원</div>
+  </div>
+  <div class="cost-card cost-total">
+    <div class="cost-label">월 합계</div>
+    <div class="cost-val">₩3~7만</div>
+    <div class="cost-note">유료 30명이면 BEP</div>
+  </div>
+</div>
+
+</body>
+</html>

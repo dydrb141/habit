@@ -1,0 +1,1 @@
+"""Habit Quest API application."""
