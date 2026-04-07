@@ -1,0 +1,28 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="64" fill="#8b5cf6"/>
+
+  <!-- Sword (RPG theme) -->
+  <g transform="translate(256, 256)">
+    <!-- Blade -->
+    <rect x="-15" y="-180" width="30" height="240" fill="#e0e0e0" rx="5"/>
+    <polygon points="-15,-180 15,-180 0,-220" fill="#e0e0e0"/>
+
+    <!-- Guard -->
+    <rect x="-50" y="-50" width="100" height="20" fill="#ffd700" rx="5"/>
+
+    <!-- Handle -->
+    <rect x="-12" y="-30" width="24" height="80" fill="#8b4513" rx="3"/>
+
+    <!-- Pommel -->
+    <circle cx="0" cy="55" r="20" fill="#ffd700"/>
+
+    <!-- Shine effect on blade -->
+    <rect x="-10" y="-170" width="8" height="180" fill="rgba(255,255,255,0.3)" rx="2"/>
+  </g>
+
+  <!-- Level badge -->
+  <circle cx="410" cy="102" r="52" fill="#ffd700"/>
+  <circle cx="410" cy="102" r="45" fill="#8b5cf6"/>
+  <text x="410" y="125" text-anchor="middle" font-size="48" font-weight="bold" fill="#ffd700">⚔️</text>
+</svg>

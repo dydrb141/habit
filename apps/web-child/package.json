@@ -17,6 +17,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@types/canvas-confetti": "^1.9.0",
     "@types/howler": "^2.2.12",
     "@types/node": "^20",
