@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import init_db, close_db
-from app.routers import auth, character, habit, party, report, boss, skill, family
+from app.routers import auth, character, habit, party, report, boss, skill, family, streak
+from app.scheduler import start_scheduler, stop_scheduler
 
 
 @asynccontextmanager
@@ -14,8 +15,14 @@ async def lifespan(app: FastAPI):
     # Startup
     if settings.DEBUG:
         await init_db()
+
+    # Start background scheduler for daily tasks
+    start_scheduler()
+
     yield
+
     # Shutdown
+    stop_scheduler()
     await close_db()
 
 
@@ -43,6 +50,7 @@ app.include_router(report.router, prefix="/api/v1/report", tags=["report"])
 app.include_router(boss.router, prefix="/api/v1/boss", tags=["boss"])
 app.include_router(skill.router, prefix="/api/v1/skills", tags=["skills"])
 app.include_router(family.router, prefix="/api/v1/family", tags=["family"])
+app.include_router(streak.router, prefix="/api/v1/streak", tags=["streak"])
 
 
 @app.get("/")
