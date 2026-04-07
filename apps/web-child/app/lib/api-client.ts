@@ -55,6 +55,8 @@ class ApiClient {
           ...(token && { Authorization: `Bearer ${token}` }),
           ...options?.headers,
         },
+        // Add timeout to prevent hanging requests
+        signal: AbortSignal.timeout(30000), // 30 seconds
       });
 
       // Handle 401 Unauthorized
@@ -66,8 +68,22 @@ class ApiClient {
       // Handle other errors
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+
+        // Provide user-friendly error messages
+        let userMessage = errorData.detail || 'Request failed';
+
+        if (response.status === 400) {
+          userMessage = errorData.detail || '잘못된 요청입니다';
+        } else if (response.status === 404) {
+          userMessage = '요청한 리소스를 찾을 수 없습니다';
+        } else if (response.status === 500) {
+          userMessage = '서버 오류가 발생했습니다';
+        } else if (response.status === 503) {
+          userMessage = '서버가 일시적으로 사용할 수 없습니다';
+        }
+
         throw new ApiError(
-          errorData.detail || 'Request failed',
+          userMessage,
           response.status,
           errorData.detail
         );
@@ -79,9 +95,27 @@ class ApiClient {
       if (error instanceof ApiError) {
         throw error;
       }
-      // Network error or other issues
+
+      // Handle specific error types
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new ApiError(
+          '네트워크 연결을 확인해주세요',
+          0,
+          'Network connection failed'
+        );
+      }
+
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new ApiError(
+          '요청 시간이 초과되었습니다',
+          0,
+          'Request timeout'
+        );
+      }
+
+      // Generic network error
       throw new ApiError(
-        'Network error or server unreachable',
+        '서버에 연결할 수 없습니다',
         0,
         String(error)
       );
